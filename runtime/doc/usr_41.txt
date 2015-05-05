@@ -1,4 +1,4 @@
-*usr_41.txt*	For Vim version 7.4.  Last change: 2014 May 28
+*usr_41.txt*	For Vim version 7.4.  Last change: 2014 Aug 16
 
 		     VIM USER MANUAL - by Bram Moolenaar
 
@@ -793,6 +793,7 @@ Command line:					*command-line-functions*
 	getcmdpos()		get position of the cursor in the command line
 	setcmdpos()		set position of the cursor in the command line
 	getcmdtype()		return the current command-line type
+	getcmdwintype()		return the current command-line window type
 
 Quickfix and location lists:			*quickfix-functions*
 	getqflist()		list of quickfix errors
@@ -827,6 +828,7 @@ Syntax and highlighting:	  *syntax-functions* *highlighting-functions*
 	synconcealed()		get info about concealing
 	diff_hlID()		get highlight ID for diff mode at a position
 	matchadd()		define a pattern to highlight (a "match")
+	matchaddpos()		define a list of positions to highlight
 	matcharg()		get info about |:match| arguments
 	matchdelete()		delete a match defined by |matchadd()| or a
 				|:match| command

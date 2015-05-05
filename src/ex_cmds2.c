@@ -739,7 +739,6 @@ debuggy_find(file, fname, after, gap, fp)
     struct debuggy *bp;
     int		i;
     linenr_T	lnum = 0;
-    regmatch_T	regmatch;
     char_u	*name = fname;
     int		prev_got_int;
 
@@ -771,8 +770,6 @@ debuggy_find(file, fname, after, gap, fp)
 #endif
 		(bp->dbg_lnum > after && (lnum == 0 || bp->dbg_lnum < lnum)))))
 	{
-	    regmatch.regprog = bp->dbg_prog;
-	    regmatch.rm_ic = FALSE;
 	    /*
 	     * Save the value of got_int and reset it.  We don't want a
 	     * previous interruption cancel matching, only hitting CTRL-C
@@ -780,7 +777,7 @@ debuggy_find(file, fname, after, gap, fp)
 	     */
 	    prev_got_int = got_int;
 	    got_int = FALSE;
-	    if (vim_regexec(&regmatch, name, (colnr_T)0))
+	    if (vim_regexec_prog(&bp->dbg_prog, FALSE, name, (colnr_T)0))
 	    {
 		lnum = bp->dbg_lnum;
 		if (fp != NULL)
@@ -2443,7 +2440,7 @@ ex_listdo(eap)
     win_T	*wp;
     tabpage_T	*tp;
 #endif
-    buf_T	*buf;
+    buf_T	*buf = curbuf;
     int		next_fnum = 0;
 #if defined(FEAT_AUTOCMD) && defined(FEAT_SYN_HL)
     char_u	*save_ei = NULL;
@@ -2464,6 +2461,9 @@ ex_listdo(eap)
 	 * great speed improvement. */
 	save_ei = au_event_disable(",Syntax");
 #endif
+#ifdef FEAT_CLIPBOARD
+    start_global_changes();
+#endif
 
     if (eap->cmdidx == CMD_windo
 	    || eap->cmdidx == CMD_tabdo
@@ -2472,20 +2472,49 @@ ex_listdo(eap)
 				    | (eap->forceit ? CCGD_FORCEIT : 0)
 				    | CCGD_EXCMD))
     {
-	/* start at the first argument/window/buffer */
 	i = 0;
+	/* start at the eap->line1 argument/window/buffer */
 #ifdef FEAT_WINDOWS
 	wp = firstwin;
 	tp = first_tabpage;
 #endif
+	switch (eap->cmdidx)
+	{
+#ifdef FEAT_WINDOWS
+	    case CMD_windo:
+		for ( ; wp != NULL && i + 1 < eap->line1; wp = wp->w_next)
+		    i++;
+		break;
+	    case CMD_tabdo:
+		for( ; tp != NULL && i + 1 < eap->line1; tp = tp->tp_next)
+		    i++;
+		break;
+#endif
+	    case CMD_argdo:
+		i = eap->line1 - 1;
+		break;
+	    default:
+		break;
+	}
 	/* set pcmark now */
 	if (eap->cmdidx == CMD_bufdo)
-	    goto_buffer(eap, DOBUF_FIRST, FORWARD, 0);
+        {
+	    /* Advance to the first listed buffer after "eap->line1". */
+            for (buf = firstbuf; buf != NULL && (buf->b_fnum < eap->line1
+					  || !buf->b_p_bl); buf = buf->b_next)
+		if (buf->b_fnum > eap->line2)
+		{
+		    buf = NULL;
+		    break;
+		}
+            if (buf != NULL)
+		goto_buffer(eap, DOBUF_FIRST, FORWARD, buf->b_fnum);
+        }
 	else
 	    setpcmark();
 	listcmd_busy = TRUE;	    /* avoids setting pcmark below */
 
-	while (!got_int)
+	while (!got_int && buf != NULL)
 	{
 	    if (eap->cmdidx == CMD_argdo)
 	    {
@@ -2506,7 +2535,6 @@ ex_listdo(eap)
 		}
 		if (curwin->w_arg_idx != i)
 		    break;
-		++i;
 	    }
 #ifdef FEAT_WINDOWS
 	    else if (eap->cmdidx == CMD_windo)
@@ -2541,6 +2569,8 @@ ex_listdo(eap)
 		    }
 	    }
 
+	    ++i;
+
 	    /* execute the command */
 	    do_cmdline(eap->arg, eap->getline, eap->cookie,
 						DOCMD_VERBOSE + DOCMD_NOWAIT);
@@ -2548,7 +2578,7 @@ ex_listdo(eap)
 	    if (eap->cmdidx == CMD_bufdo)
 	    {
 		/* Done? */
-		if (next_fnum < 0)
+		if (next_fnum < 0 || next_fnum > eap->line2)
 		    break;
 		/* Check if the buffer still exists. */
 		for (buf = firstbuf; buf != NULL; buf = buf->b_next)
@@ -2579,6 +2609,14 @@ ex_listdo(eap)
 		    do_check_scrollbind(TRUE);
 #endif
 	    }
+
+#ifdef FEAT_WINDOWS
+	    if (eap->cmdidx == CMD_windo || eap->cmdidx == CMD_tabdo)
+		if (i+1 > eap->line2)
+		    break;
+#endif
+	    if (eap->cmdidx == CMD_argdo && i >= eap->line2)
+		break;
 	}
 	listcmd_busy = FALSE;
     }
@@ -2590,6 +2628,9 @@ ex_listdo(eap)
 	apply_autocmds(EVENT_SYNTAX, curbuf->b_p_syn,
 					       curbuf->b_fname, TRUE, curbuf);
     }
+#endif
+#ifdef FEAT_CLIPBOARD
+    end_global_changes();
 #endif
 }
 
@@ -2750,8 +2791,8 @@ source_runtime(name, all)
  * used.
  * Returns OK when at least one match found, FAIL otherwise.
  *
- * If "name" is NULL calls callback for each entry in runtimepath. Cookie is 
- * passed by reference in this case, setting it to NULL indicates that callback 
+ * If "name" is NULL calls callback for each entry in runtimepath. Cookie is
+ * passed by reference in this case, setting it to NULL indicates that callback
  * has done its job.
  */
     int

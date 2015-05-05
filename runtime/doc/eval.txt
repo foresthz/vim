@@ -1,4 +1,4 @@
-*eval.txt*	For Vim version 7.4.  Last change: 2014 Jun 12
+*eval.txt*	For Vim version 7.4.  Last change: 2015 Mar 05
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar
@@ -956,7 +956,7 @@ Decimal, Hexadecimal (starting with 0x or 0X), or Octal (starting with 0).
 Floating point numbers can be written in two forms:
 
 	[-+]{N}.{M}
-	[-+]{N}.{M}e[-+]{exp}
+	[-+]{N}.{M}[eE][-+]{exp}
 
 {N} and {M} are numbers.  Both {N} and {M} must be present and can only
 contain digits.
@@ -1102,9 +1102,9 @@ are known inside the current Vim session.  Using expand() will first try using
 the environment variables known inside the current Vim session.  If that
 fails, a shell will be used to expand the variable.  This can be slow, but it
 does expand all variables that the shell knows about.  Example: >
-	:echo $version
-	:echo expand("$version")
-The first one probably doesn't echo anything, the second echoes the $version
+	:echo $shell
+	:echo expand("$shell")
+The first one probably doesn't echo anything, the second echoes the $shell
 variable (if your shell supports it).
 
 
@@ -1457,10 +1457,10 @@ v:foldstart	Used for 'foldtext': first line of closed fold.
 		Read-only in the |sandbox|. |fold-foldtext|
 
 					*v:hlsearch* *hlsearch-variable*
-v:hlsearch	Variable that determines whether search highlighting is on. 
-		Makes sense only if 'hlsearch' is enabled which requires 
-		|+extra_search|. Setting this variable to zero acts the like 
-		|:nohlsearch| command, setting it to one acts like >
+v:hlsearch	Variable that indicates whether search highlighting is on. 
+		Setting it makes sense only if 'hlsearch' is enabled which
+		requires |+extra_search|. Setting this variable to zero acts
+		the like |:nohlsearch| command, setting it to one acts like >
 			let &hlsearch = &hlsearch
 <
 					*v:insertmode* *insertmode-variable*
@@ -1751,12 +1751,12 @@ confirm( {msg} [, {choices} [, {default} [, {type}]]])
 copy( {expr})			any	make a shallow copy of {expr}
 cos( {expr})			Float	cosine of {expr}
 cosh( {expr})			Float	hyperbolic cosine of {expr}
-count( {list}, {expr} [, {start} [, {ic}]])
+count( {list}, {expr} [, {ic} [, {start}]])
 				Number	 count how many {expr} are in {list}
 cscope_connection( [{num} , {dbpath} [, {prepend}]])
 				Number	checks existence of cscope connection
-cursor( {lnum}, {col} [, {coladd}])
-				Number	move cursor to {lnum}, {col}, {coladd}
+cursor( {lnum}, {col} [, {off}])
+				Number	move cursor to {lnum}, {col}, {off}
 cursor( {list})			Number	move cursor to position in {list}
 deepcopy( {expr} [, {noref}])	any	make a full copy of {expr}
 delete( {fname})		Number	delete file {fname}
@@ -1807,7 +1807,8 @@ getchar( [expr])		Number	get one character from the user
 getcharmod( )			Number	modifiers for the last typed character
 getcmdline()			String	return the current command-line
 getcmdpos()			Number	return cursor position in command-line
-getcmdtype()			String	return the current command-line type
+getcmdtype()			String	return current command-line type
+getcmdwintype()			String	return current command-line window type
 getcurpos()			List	position of the cursor
 getcwd()			String	the current working directory
 getfontname( [{name}])		String	name of font being used
@@ -1833,9 +1834,9 @@ getwinposx()			Number	X coord in pixels of GUI Vim window
 getwinposy()			Number	Y coord in pixels of GUI Vim window
 getwinvar( {nr}, {varname} [, {def}])
 				any	variable {varname} in window {nr}
-glob( {expr} [, {nosuf} [, {list}]])
+glob( {expr} [, {nosuf} [, {list} [, {alllinks}]]])
 				any	expand file wildcards in {expr}
-globpath( {path}, {expr} [, {nosuf} [, {list}]])
+globpath( {path}, {expr} [, {nosuf} [, {list} [, {alllinks}]]])
 				String	do glob({expr}) for all dirs in {path}
 has( {feature})			Number	TRUE if feature {feature} supported
 has_key( {dict}, {key})		Number	TRUE if {dict} has entry {key}
@@ -1887,6 +1888,8 @@ match( {expr}, {pat}[, {start}[, {count}]])
 				Number	position where {pat} matches in {expr}
 matchadd( {group}, {pattern}[, {priority}[, {id}]])
 				Number	highlight {pattern} with {group}
+matchaddpos( {group}, {list}[, {priority}[, {id}]])
+				Number	highlight positions with {group}
 matcharg( {nr})			List	arguments of |:match|
 matchdelete( {id})		Number	delete match identified by {id}
 matchend( {expr}, {pat}[, {start}[, {count}]])
@@ -2038,7 +2041,7 @@ winrestcmd()			String	returns command to restore window sizes
 winrestview( {dict})		none	restore view of current window
 winsaveview()			Dict	save view of current window
 winwidth( {nr})			Number	width of window {nr}
-writefile( {list}, {fname} [, {binary}])
+writefile( {list}, {fname} [, {flags}])
 				Number	write list of lines to file {fname}
 xor( {expr}, {expr})		Number  bitwise XOR
 
@@ -2110,8 +2113,8 @@ argidx()	The result is the current index in the argument list.  0 is
 arglistid([{winnr}, [ {tabnr} ]])
 		Return the argument list ID.  This is a number which
 		identifies the argument list being used.  Zero is used for the
-		global argument list.
-		Return zero if the arguments are invalid.
+		global argument list.  See |arglist|.
+		Return -1 if the arguments are invalid.
 
 		Without arguments use the current window.
 		With {winnr} only use this window in the current tab page.
@@ -2392,6 +2395,10 @@ col({expr})	The result is a Number, which is the byte index of the column
 			    number of bytes in the cursor line plus one)
 		    'x	    position of mark x (if the mark is not set, 0 is
 			    returned)
+		    v       In Visual mode: the start of the Visual area (the
+			    cursor is the end).  When not in Visual mode
+			    returns the cursor position.  Differs from |'<| in
+			    that it's updated right away.
 		Additionally {expr} can be [lnum, col]: a |List| with the line
 		and column number. Most useful when the column is "$", to get
 		the last column of a specific line.  When "lnum" or "col" is
@@ -2607,7 +2614,7 @@ cursor({list})
 		with two, three or four item:
 			[{lnum}, {col}, {off}]
 			[{lnum}, {col}, {off}, {curswant}]
-		This is like the return value of |getpos()| or |getcurpos|,
+		This is like the return value of |getpos()| or |getcurpos()|,
 		but without the first item.
 
 		Does not change the jumplist.
@@ -2619,7 +2626,8 @@ cursor({list})
 		line.
 		If {col} is zero, the cursor will stay in the current column.
 		If {curswant} is given it is used to set the preferred column
-		for vertical movment.  Otherwise {col} is used.
+		for vertical movement.  Otherwise {col} is used.
+
 		When 'virtualedit' is used {off} specifies the offset in
 		screen columns from the start of the character.  E.g., a
 		position within a <Tab> or after the last character.
@@ -2910,7 +2918,8 @@ expand({expr} [, {nosuf} [, {list}]])				*expand()*
 <
 		Expand() can also be used to expand variables and environment
 		variables that are only known in a shell.  But this can be
-		slow, because a shell must be started.	See |expr-env-expand|.
+		slow, because a shell may be used to do the expansion.  See
+		|expr-env-expand|.
 		The expanded variable is still handled like a list of file
 		names.	When an environment variable cannot be expanded, it is
 		left unchanged.  Thus ":echo expand('$FOOBAR')" results in
@@ -2956,9 +2965,12 @@ extend({expr1}, {expr2} [, {expr3}])			*extend()*
 
 feedkeys({string} [, {mode}])				*feedkeys()*
 		Characters in {string} are queued for processing as if they
-		come from a mapping or were typed by the user.	They are added
-		to the end of the typeahead buffer, thus if a mapping is still
-		being executed these characters come after them.
+		come from a mapping or were typed by the user.
+		By default the string is added to the end of the typeahead
+		buffer, thus if a mapping is still being executed the
+		characters come after them.  Use the 'i' flag to insert before
+		other characters, they will be executed next, before any
+		characters from a mapping.
 		The function does not wait for processing of keys contained in
 		{string}.
 		To include special keys into {string}, use double-quotes
@@ -2972,6 +2984,7 @@ feedkeys({string} [, {mode}])				*feedkeys()*
 		't'	Handle keys as if typed; otherwise they are handled as
 			if coming from a mapping.  This matters for undo,
 			opening folds, etc.
+		'i'	Insert the string instead of appending (see above).
 		Return value is always 0.
 
 filereadable({file})					*filereadable()*
@@ -3300,6 +3313,17 @@ getchar([expr])						*getchar()*
 			:    endif
 			:  endwhile
 			:endfunction
+<
+		You may also receive synthetic characters, such as
+		|<CursorHold>|. Often you will want to ignore this and get
+		another character: >
+			:function GetKey()
+			:  let c = getchar()
+			:  while c == "\<CursorHold>"
+			:    let c = getchar()
+			:  endwhile
+			:  return c
+			:endfunction
 
 getcharmod()						*getcharmod()*
 		The result is a Number which is the state of the modifiers for
@@ -3342,10 +3366,16 @@ getcmdtype()						*getcmdtype()*
 		    ?	backward search command
 		    @	|input()| command
 		    -	|:insert| or |:append| command
+		    =	|i_CTRL-R_=|
 		Only works when editing the command line, thus requires use of
 		|c_CTRL-\_e| or |c_CTRL-R_=| or an expression mapping.
 		Returns an empty string otherwise.
 		Also see |getcmdpos()|, |setcmdpos()| and |getcmdline()|.
+
+getcmdwintype()						*getcmdwintype()*
+		Return the current |command-line-window| type. Possible return
+		values are the same as |getcmdtype()|. Returns an empty string
+		when not in the command-line window.
 
 							*getcurpos()*
 getcurpos()	Get the position of the cursor.  This is like getpos('.'), but
@@ -3357,7 +3387,7 @@ getcurpos()	Get the position of the cursor.  This is like getpos('.'), but
 			let save_cursor = getcurpos()
 			MoveTheCursorAround
 			call setpos('.', save_cursor)
-
+<
 							*getcwd()*
 getcwd()	The result is a String, which is the name of the current
 		working directory.
@@ -3504,7 +3534,7 @@ getpos({expr})	Get the position for {expr}.  For possible values of {expr}
 		This can be used to save and restore the position of a mark: >
 			let save_a_mark = getpos("'a")
 			...
-			call setpos(''a', save_a_mark
+			call setpos("'a", save_a_mark)
 <		Also see |getcurpos()| and |setpos()|.
 
 
@@ -3566,6 +3596,8 @@ gettabvar({tabnr}, {varname} [, {def}])				*gettabvar()*
 		Get the value of a tab-local variable {varname} in tab page
 		{tabnr}. |t:var|
 		Tabs are numbered starting with one.
+		When {varname} is empty a dictionary with all tab-local
+		variables is returned.
 		Note that the name without "t:" must be used.
 		When the tab or variable doesn't exist {def} or an empty
 		string is returned, there is no error message.
@@ -3606,7 +3638,7 @@ getwinvar({winnr}, {varname} [, {def}])				*getwinvar()*
 			:let list_is_on = getwinvar(2, '&list')
 			:echo "myvar = " . getwinvar(1, 'myvar')
 <
-glob({expr} [, {nosuf} [, {list}]])				*glob()*
+glob({expr} [, {nosuf} [, {list} [, {alllinks}]]])		*glob()*
 		Expand the file wildcards in {expr}.  See |wildcards| for the
 		use of special characters.
 
@@ -3623,8 +3655,11 @@ glob({expr} [, {nosuf} [, {list}]])				*glob()*
 		matches, they are separated by <NL> characters.
 
 		If the expansion fails, the result is an empty String or List.
+
 		A name for a non-existing file is not included.  A symbolic
 		link is only included if it points to an existing file.
+		However, when the {alllinks} argument is present and it is
+		non-zero then all symbolic links are included.
 
 		For most systems backticks can be used to get files names from
 		any external command.  Example: >
@@ -3636,7 +3671,8 @@ glob({expr} [, {nosuf} [, {list}]])				*glob()*
 		See |expand()| for expanding special Vim variables.  See
 		|system()| for getting the raw output of an external command.
 
-globpath({path}, {expr} [, {nosuf} [, {list}]])			*globpath()*
+								*globpath()*
+globpath({path}, {expr} [, {nosuf} [, {list} [, {allinks}]]])
 		Perform glob() on all directories in {path} and concatenate
 		the results.  Example: >
 			:echo globpath(&rtp, "syntax/c.vim")
@@ -3662,6 +3698,8 @@ globpath({path}, {expr} [, {nosuf} [, {list}]])			*globpath()*
 		they are separated by <NL> characters.  Example: >
 			:echo globpath(&rtp, "syntax/c.vim", 0, 1)
 <
+		{allinks} is used as with |glob()|.
+
 		The "**" item can be used to search in a directory tree.
 		For example, to find all "README.txt" files in the directories
 		in 'runtimepath' and below: >
@@ -4380,6 +4418,41 @@ matchadd({group}, {pattern}[, {priority}[, {id}]])
 		available from |getmatches()|.	All matches can be deleted in
 		one operation by |clearmatches()|.
 
+matchaddpos({group}, {pos}[, {priority}[, {id}]])		*matchaddpos()*
+		Same as |matchadd()|, but requires a list of positions {pos}
+		instead of a pattern. This command is faster than |matchadd()|
+		because it does not require to handle regular expressions and
+		sets buffer line boundaries to redraw screen. It is supposed
+		to be used when fast match additions and deletions are
+		required, for example to highlight matching parentheses.
+
+		The list {pos} can contain one of these items:
+		- A number.  This whole line will be highlighted.  The first
+		  line has number 1.
+		- A list with one number, e.g., [23]. The whole line with this
+		  number will be highlighted.
+		- A list with two numbers, e.g., [23, 11]. The first number is
+		  the line number, the second one is the column number (first
+		  column is 1, the value must correspond to the byte index as
+		  |col()| would return).  The character at this position will
+		  be highlighted.
+		- A list with three numbers, e.g., [23, 11, 3]. As above, but
+		  the third number gives the length of the highlight in bytes.
+		
+		The maximum number of positions is 8.
+
+		Example: >
+			:highlight MyGroup ctermbg=green guibg=green
+			:let m = matchaddpos("MyGroup", [[23, 24], 34])
+<		Deletion of the pattern: >
+			:call matchdelete(m)
+
+<		Matches added by |matchaddpos()| are returned by
+		|getmatches()| with an entry "pos1", "pos2", etc., with the
+		value a list like the {pos} item.
+		These matches cannot be set via |setmatches()|, however they
+		can still be deleted by |clearmatches()|.
+
 matcharg({nr})							*matcharg()*
 		Selects the {nr} match item, as set with a |:match|,
 		|:2match| or |:3match| command.
@@ -4699,6 +4772,7 @@ printf({fmt}, {expr1} ...)				*printf()*
 		s	The text of the String argument is used.  If a
 			precision is specified, no more bytes than the number
 			specified are used.
+							*printf-S*
 		S	The text of the String argument is used.  If a
 			precision is specified, no more display cells than the
 			number specified are used.  Without the |+multi_byte|
@@ -4760,7 +4834,7 @@ py3eval({expr})						*py3eval()*
 		Evaluate Python expression {expr} and return its result
 		converted to Vim data structures.
 		Numbers and strings are returned as they are (strings are 
-		copied though, unicode strings are additionally converted to 
+		copied though, Unicode strings are additionally converted to 
 		'encoding').
 		Lists are represented as Vim |List| type.
 		Dictionaries are represented as Vim |Dictionary| type with 
@@ -4804,7 +4878,7 @@ readfile({fname} [, {binary} [, {max}]])
 		separated with CR will result in a single long line (unless a
 		NL appears somewhere).
 		All NUL characters are replaced with a NL character.
-		When {binary} is equal to "b" binary mode is used:
+		When {binary/append} contains "b" binary mode is used:
 		- When the last line ends in a NL an extra empty list item is
 		  added.
 		- No CR characters are removed.
@@ -5447,7 +5521,7 @@ setreg({regname}, {value} [,{options}])
 		Returns zero for success, non-zero for failure.
 
 							*E883*
-		Note: you may not use |List| containing more then one item to 
+		Note: you may not use |List| containing more than one item to 
 		      set search and expression registers. Lists containing no 
 		      items act like empty strings.
 
@@ -5499,7 +5573,7 @@ setwinvar({nr}, {varname}, {val})			*setwinvar()*
 			:call setwinvar(2, "myvar", "foobar")
 
 sha256({string})						*sha256()*
-		Returns a String with 64 hex charactes, which is the SHA256
+		Returns a String with 64 hex characters, which is the SHA256
 		checksum of {string}.
 		{only available when compiled with the |+cryptv| feature}
 
@@ -5592,11 +5666,19 @@ sort({list} [, {func} [, {dict}]])			*sort()* *E702*
 		If you want a list to remain unmodified make a copy first: >
 			:let sortedlist = sort(copy(mylist))
 
-<		Uses the string representation of each item to sort on.
-		Numbers sort after Strings, |Lists| after Numbers.
-		For sorting text in the current buffer use |:sort|.
+<		When {func} is omitted, is empty or zero, then sort() uses the
+		string representation of each item to sort on.  Numbers sort
+		after Strings, |Lists| after Numbers.  For sorting text in the
+		current buffer use |:sort|.
 
-		When {func} is given and it is one then case is ignored.
+		When {func} is given and it is '1' or 'i' then case is
+		ignored.
+		
+		When {func} is given and it is 'n' then all items will be
+		sorted numerical (Implementation detail: This uses the
+		strtod() function to parse numbers, Strings, Lists, Dicts and
+		Funcrefs will be considered as being 0).
+
 		When {func} is a |Funcref| or a function name, this function
 		is called to compare items.  The function is invoked with two
 		items as argument and must return zero if they are equal, 1 or
@@ -5605,6 +5687,11 @@ sort({list} [, {func} [, {dict}]])			*sort()* *E702*
 
 		{dict} is for functions with the "dict" attribute.  It will be
 		used to set the local variable "self". |Dictionary-function|
+
+		The sort is stable, items which compare equal (as number or as
+		string) will keep their relative position. E.g., when sorting
+		on numbers, text strings will sort next to each other, in the
+		same order as they were originally.
 
 		Also see |uniq()|.
 
@@ -6036,6 +6123,12 @@ system({expr} [, {input}])				*system()* *E677*
 		list items converted to NULs).  
 		Pipes are not used.
 
+		When prepended by |:silent| the shell will not be set to
+		cooked mode.  This is meant to be used for commands that do
+		not need the user to type.  It avoids stray characters showing
+		up on the screen which require |CTRL-L| to remove. >
+			:silent let f = system('ls *.vim')
+<
 		Note: Use |shellescape()| or |::S| with |expand()| or 
 		|fnamemodify()| to escape special characters in a command 
 		argument.  Newlines in {expr} may cause the command to fail.  
@@ -6340,6 +6433,10 @@ virtcol({expr})						*virtcol()*
 			    plus one)
 		    'x	    position of mark x (if the mark is not set, 0 is
 			    returned)
+		    v       In Visual mode: the start of the Visual area (the
+			    cursor is the end).  When not in Visual mode
+			    returns the cursor position.  Differs from |'<| in
+			    that it's updated right away.
 		Note that only marks in the current file can be used.
 		Examples: >
   virtcol(".")	   with text "foo^Lbar", with cursor on the "^L", returns 5
@@ -6462,7 +6559,7 @@ winsaveview()	Returns a |Dictionary| that contains information to restore
 		buffer and you want to go back to the original view.
 		This does not save fold information.  Use the 'foldenable'
 		option to temporarily switch off folding, so that folds are
-		not opened when moving around.
+		not opened when moving around. This may have side effects.
 		The return value includes:
 			lnum		cursor line number
 			col		cursor column (Note: the first column
@@ -6489,14 +6586,20 @@ winwidth({nr})						*winwidth()*
   :endif
 <
 							*writefile()*
-writefile({list}, {fname} [, {binary}])
+writefile({list}, {fname} [, {flags}])
 		Write |List| {list} to file {fname}.  Each list item is
 		separated with a NL.  Each list item must be a String or
 		Number.
-		When {binary} is equal to "b" binary mode is used: There will
+		When {flags} contains "b" then binary mode is used: There will
 		not be a NL after the last list item.  An empty item at the
 		end does cause the last line in the file to end in a NL.
-		All NL characters are replaced with a NUL character.
+
+		When {flags} contains "a" then append mode is used, lines are
+		append to the file: >
+			:call writefile(["foo"], "event.log", "a")
+			:call writefile(["bar"], "event.log", "a")
+>
+<		All NL characters are replaced with a NUL character.
 		Inserting CR characters needs to be done before passing {list}
 		to writefile().
 		An existing file is overwritten, if possible.
@@ -6518,7 +6621,7 @@ xor({expr}, {expr})					*xor()*
 
 
 							*feature-list*
-There are three types of features:
+There are four types of features:
 1.  Features that are only supported when they have been enabled when Vim
     was compiled |+feature-list|.  Example: >
 	:if has("cindent")
@@ -6572,6 +6675,7 @@ dialog_con		Compiled with console dialog support.
 dialog_gui		Compiled with GUI dialog support.
 diff			Compiled with |vimdiff| and 'diff' support.
 digraphs		Compiled with support for digraphs.
+directx			Compiled with support for Direct-X and 'renderoptions'.
 dnd			Compiled with support for the "~ register |quote_~|.
 dos16			16 bits DOS version of Vim.
 dos32			32 bits DOS (DJGPP) version of Vim.
@@ -6614,8 +6718,8 @@ jumplist		Compiled with |jumplist| support.
 keymap			Compiled with 'keymap' support.
 langmap			Compiled with 'langmap' support.
 libcall			Compiled with |libcall()| support.
-linebreak		Compiled with 'linebreak', 'breakat' and 'showbreak'
-			support.
+linebreak		Compiled with 'linebreak', 'breakat', 'showbreak' and
+			'breakindent' support.
 lispindent		Compiled with support for lisp indenting.
 listcmds		Compiled with commands for the buffer list |:files|
 			and the argument list |arglist|.
@@ -7278,7 +7382,7 @@ This does NOT work: >
 				:unlet v
 <							*E741*
 			If you try to change a locked variable you get an
-			error message: "E741: Value of {name} is locked"
+			error message: "E741: Value is locked: {name}"
 
 			[depth] is relevant when locking a |List| or
 			|Dictionary|.  It specifies how deep the locking goes:
@@ -8182,7 +8286,7 @@ You can catch all Vim errors by the pattern >
 							*catch-text*
 NOTE: You should never catch the error message text itself: >
 	:catch /No such variable/
-only works in the english locale, but not when the user has selected
+only works in the English locale, but not when the user has selected
 a different language by the |:language| command.  It is however helpful to
 cite the message text in a comment: >
 	:catch /^Vim(\a\+):E108:/   " No such variable
